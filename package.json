@@ -1,0 +1,21 @@
+{
+  "name": "event-hook",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "nodeunit tests/tests.js"
+  },
+  "devDependencies": {
+  	"nodeunit": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/StewartAtkins/node-event-hook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/StewartAtkins/node-event-hook/issues"
+  },
+  "author": "Stewart Atkins",
+  "license": "BSD-3-Clause"
+}
