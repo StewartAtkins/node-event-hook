@@ -14,12 +14,13 @@ module.exports = exports = self;
 * TODO: Allow for removal of event processors
 */
 
-self.EventShim = function(obj, events){
+self.EventShim = function(obj){
 	var ret = new EventEmitter();
 
 	var eventProcessors = {};
 
 	var origOn = obj.on;
+	var origRemoveAll = obj.removeAllListeners;
 
 	ret.getObject = function(){ return obj; };
 
@@ -43,11 +44,19 @@ self.EventShim = function(obj, events){
 		}
 	};
 
-	ret.forwardEvent = function(evt){
+	var forwardEvent = function(evt){
+		//Crude but necessary
+		origRemoveAll.apply(obj, [evt]);
 		origOn.apply(obj, [evt, function(){
 			executeProcessor(evt, arguments, 0);
 		}]);
 		return ret;
+	};
+
+	var oldOn = ret.on;
+	ret.on = ret.addEventListener = function(){
+		forwardEvent(arguments[0]);
+		oldOn.apply(ret, arguments);
 	};
 
 	ret.addEventProcessor = function(evt, processor){
@@ -56,10 +65,6 @@ self.EventShim = function(obj, events){
 		eventProcessors[evt].push(processor);
 		return ret;
 	};
-
-	events.forEach(function(evt){
-		ret.forwardEvent(evt);
-	});
 
 	return ret;
 };
@@ -71,16 +76,21 @@ self.EventShim = function(obj, events){
 * Returns the event shim for adding of processors or future event forwards
 */
 
-self.EventHook = function(obj, events){
-	var ret = self.EventShim(obj, events);
-	obj.on = obj.addEventListener = function(){
-		for(var i=0;i<arguments.length;i++){
-			if(arguments[i] instanceof Function){
-				arguments[i] = arguments[i].bind(obj);
+//TODO: apply this to all eventEmitter methods in target object
+self.EventHook = function(obj){
+	var ret = self.EventShim(obj);
+	Object.keys(EventEmitter.prototype).forEach(function(funcName){
+		if(funcName.toLowerCase() == "emit") //Don't hook emit otherwise what the hell are we doing here...
+			return;
+		obj[funcName] = function(){
+			for(var i=0;i<arguments.length;i++){
+				if(arguments[i] instanceof Function){
+					arguments[i] = arguments[i].bind(obj);
+				}
 			}
+			ret[funcName].apply(ret, arguments);
 		}
-		ret.on.apply(ret, arguments);
-	};
+	});
 	obj.__eventHookShim = ret;
 	return ret;
 };
@@ -89,5 +99,13 @@ self.EventHook = function(obj, events){
 * Returns true if object has been hooked, false otherwise
 */
 self.IsHooked = function(obj){
-	return ("__eventHookShim" in obj);
+	return typeof(self.GetShim(obj)) != "undefined";
+};
+
+/*
+* Returns the shim object, null otherwise
+*/
+self.GetShim = function(obj){
+	if("__eventHookShim" in obj)
+		return obj.__eventHookShim;
 };

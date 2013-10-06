@@ -7,7 +7,7 @@ exports.testShimForwarding = function(test){
 	test.expect(2);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent1"]);
+	var shim = evtTools.EventShim(testObj);
 	shim.on("testEvent1", function(magicNo){
 		test.equal(magicNo, 42, "Arguments were not propagated correctly");
 		test.equal(this, shim, "Incorrect 'this' context in shim mode");
@@ -17,6 +17,8 @@ exports.testShimForwarding = function(test){
 };
 
 //As the previous test, but verifies behaviour when forwardEvent is called instead of passing the event name in the pseudo-constructor
+//Removed since forwarding doesn't need to be exposed anymore, and therefore isn't
+/*
 exports.testShimForwardingCall = function(test){
 	test.expect(1);
 
@@ -29,9 +31,11 @@ exports.testShimForwardingCall = function(test){
 	testObj.emit("testEvent1",42);
 	test.done();
 };
+*/
 
 //Verifies that an event which is not registered will not be forwarded
-exports.testShimNonForwarding = function(test){
+//Removed since non-forwarding isn't part of the contract anymore
+/*exports.testShimNonForwarding = function(test){
 	test.expect(0);
 
 	var testObj = new events.EventEmitter();
@@ -41,23 +45,27 @@ exports.testShimNonForwarding = function(test){
 	});
 	testObj.emit("testEvent1",42);
 	test.done();
-};
+};*/
 
 //Verifies that testEvent2 will be dispatched, and with the right argument and to the right handler, but testEvent1 won't
 exports.testShimMultiEvent = function(test){
-	test.expect(2);
+	test.expect(3);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
-	shim.on("testEvent1", function(magicNo){
+	var shim = evtTools.EventShim(testObj);
+	/*shim.on("testEvent1", function(magicNo){
 		test.ok(false, "Unregistered event was forwarded");
-	});
+	});*/
 	shim.on("testEvent2", function(magicNo){
 		test.notEqual(magicNo, 42, "Incorrect event was dispatched to registered handler");
 		test.equal(magicNo, 43, "Arguments were not propagated correctly, or incorrect event was dispatched");
 	});
 	testObj.emit("testEvent1",42);
 	testObj.emit("testEvent2",43);
+	shim.on("testEvent1", function(magicNo){
+		test.equal(magicNo, 42, "Incorrect argument");
+	});
+	testObj.emit("testEvent1",42);
 	test.done();
 };
 
@@ -66,7 +74,7 @@ exports.testShimWithProcessor = function(test){
 	test.expect(2);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
+	var shim = evtTools.EventShim(testObj);
 	shim.addEventProcessor("testEvent1", function(cb, magicNo){
 		test.ok(false, "Incorrect processor was invoked");
 		cb(magicNo - 10);
@@ -87,7 +95,7 @@ exports.testShimWithMultipleProcessors = function(test){
 	test.expect(3);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
+	var shim = evtTools.EventShim(testObj);
 	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Processor 1 was invoked");
 		cb(magicNo + 10);
@@ -109,7 +117,7 @@ exports.testShimProcessorAbort = function(test){
 	test.expect(2);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
+	var shim = evtTools.EventShim(testObj);
 	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Processor 1 was invoked");
 		cb();
@@ -135,7 +143,7 @@ exports.testShimProcessorAbort = function(test){
 exports.testShimProcessorAsyncAndMultiEmit = function(test){
 	test.expect(7);
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
+	var shim = evtTools.EventShim(testObj);
 	var firstProcessorCalled = false;
 	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(!firstProcessorCalled, "First processor was called more than once");
@@ -168,7 +176,7 @@ exports.testHook = function(test){
 	test.expect(2);
 
 	var testObj = new events.EventEmitter();
-	var shim = evtTools.EventHook(testObj, ["testEvent2"]);
+	var shim = evtTools.EventHook(testObj);
 	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		cb(magicNo + 10);
 	});
@@ -186,7 +194,16 @@ exports.testHookCheck = function(test){
 
 	var testObj = new events.EventEmitter();
 	test.ok(!evtTools.IsHooked(testObj), "Hook check returning true incorrectly");
-	var shim = evtTools.EventHook(testObj, []);
+	var shim = evtTools.EventHook(testObj);
 	test.ok(evtTools.IsHooked(testObj), "Hook check returning false incorrectly");
 	test.done();
-}
+};
+
+exports.testShimRetrievabl = function(test){
+	test.expect(1);
+
+	var testObj = new events.EventEmitter();
+	var shim = evtTools.EventHook(testObj);
+	test.equal(evtTools.GetShim(testObj), shim, "Hook retrieval returned incorrect value");
+	test.done();
+};
