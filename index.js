@@ -23,27 +23,29 @@ self.EventShim = function(obj, events){
 
 	ret.getObject = function(){ return obj; };
 
+	var executeProcessor = function(evt, arglist, pid){
+		var newArgList = [null];
+		for(var i=0;i<arglist.length;i++){
+			newArgList.push(arglist[i]);
+		}
+		if(!(evt in eventProcessors) || pid >= eventProcessors[evt].length){
+			newArgList[0] = evt;
+			ret.emit.apply(ret, newArgList);
+		}else{
+			var func = eventProcessors[evt][pid];
+			newArgList[0] = function(){
+				var newArgs = arguments;
+				if(!arguments.length)
+					newArgs = arglist;
+				executeProcessor(evt, newArgs, pid+1);
+			};
+			func.apply(func, newArgList);
+		}
+	};
+
 	ret.forwardEvent = function(evt){
 		origOn.apply(obj, [evt, function(){
-			var arglist = [];
-			for(var i=0;i<arguments.length;i++){
-				arglist.push(arguments[i]);
-			}
-			var continueProcessing = true;
-			if(evt in eventProcessors){
-				eventProcessors[evt].forEach(function(func){
-					if(!continueProcessing)
-						return;
-					var newArgList = func.apply(func, arglist);
-					if(newArgList instanceof Array)
-						arglist = newArgList;
-					else if(newArgList === false)
-						continueProcessing = false;
-				});
-			}
-			arglist.unshift(evt);
-			if(continueProcessing)
-				ret.emit.apply(ret, arglist);
+			executeProcessor(evt, arguments, 0);
 		}]);
 		return ret;
 	};

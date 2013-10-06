@@ -67,13 +67,13 @@ exports.testShimWithProcessor = function(test){
 
 	var testObj = new events.EventEmitter();
 	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
-	shim.addEventProcessor("testEvent1", function(magicNo){
+	shim.addEventProcessor("testEvent1", function(cb, magicNo){
 		test.ok(false, "Incorrect processor was invoked");
-		return [magicNo - 10];
+		cb(magicNo - 10);
 	});
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Correct processor was invoked");
-		return [magicNo + 10];
+		cb(magicNo + 10);
 	});
 	shim.on("testEvent2", function(magicNo){
 		test.equal(magicNo, 52, "Processed argument was not dispatched");
@@ -88,13 +88,13 @@ exports.testShimWithMultipleProcessors = function(test){
 
 	var testObj = new events.EventEmitter();
 	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Processor 1 was invoked");
-		return [magicNo + 10];
+		cb(magicNo + 10);
 	});
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Processor 2 was invoked");
-		return [magicNo * 2];
+		cb(magicNo * 2);
 	});
 	shim.on("testEvent2", function(magicNo){
 		test.equal(magicNo, 104, "Processors executed in wrong order");
@@ -110,14 +110,14 @@ exports.testShimProcessorAbort = function(test){
 
 	var testObj = new events.EventEmitter();
 	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(true, "Processor 1 was invoked");
+		cb();
 	});
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.equals(magicNo, 42, "Correct argument was dispatched to second processor");
-		return false;
 	});
-	shim.addEventProcessor("testEvent2", function(magicNo){
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
 		test.ok(false, "Event was propagated to next processor");
 	});
 	shim.on("testEvent2", function(magicNo){
@@ -125,6 +125,40 @@ exports.testShimProcessorAbort = function(test){
 	});
 	testObj.emit("testEvent2",42);
 	test.done();
+};
+
+//Ensures when using a processor which emits an event multiple times that:
+// 1. the previous processors in the chain aren't affected - this one will fail assertion if called multiple times
+// 2. that multiple emissions work, even when async (two sync emissions from second processor with async then tested via setTimeout)
+// 3. that subsequent processors are called for each emission (number of assertions tested)
+// 4. that the event listener gets called with the correct argument and the correct number of times (number of assertions tested, plus comparison assertion for agument)
+exports.testShimProcessorAsyncAndMultiEmit = function(test){
+	test.expect(7);
+	var testObj = new events.EventEmitter();
+	var shim = evtTools.EventShim(testObj, ["testEvent2"]);
+	var firstProcessorCalled = false;
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		test.ok(!firstProcessorCalled, "First processor was called more than once");
+		firstProcessorCalled = true;
+		cb();
+	});
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		cb(magicNo);
+		cb(magicNo+1);
+		setTimeout(function(){ cb(magicNo+2); },10);
+	});
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		test.ok(true, "Marker assertion to verify number of subsequent processor calls");
+		cb();
+	});
+	var expectedNumber = 42;
+	shim.on("testEvent2", function(magicNo){
+		test.equals(magicNo, expectedNumber, "Incorrect argument provided");
+		expectedNumber++;
+	});
+	testObj.emit("testEvent2",42);
+	setTimeout(function(){ test.done(); }, 20);
+	//test.done();
 };
 
 //Verifies that hook causes the object itself to emit the event and the arguments are processed
@@ -135,8 +169,8 @@ exports.testHook = function(test){
 
 	var testObj = new events.EventEmitter();
 	var shim = evtTools.EventHook(testObj, ["testEvent2"]);
-	shim.addEventProcessor("testEvent2", function(magicNo){
-		return [magicNo + 10];
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		cb(magicNo + 10);
 	});
 	testObj.on("testEvent2", function(magicNo){
 		test.equal(magicNo, 52, "Incorrect argument was propagated");
