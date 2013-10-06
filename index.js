@@ -18,10 +18,11 @@ self.EventShim = function(obj){
 	var ret = new EventEmitter();
 
 	var eventProcessors = {};
+	var registeredEvents = [];
+
 
 	var origOn = obj.on;
 	var origRemoveAll = obj.removeAllListeners;
-
 	ret.getObject = function(){ return obj; };
 
 	var executeProcessor = function(evt, arglist, pid){
@@ -45,18 +46,19 @@ self.EventShim = function(obj){
 	};
 
 	var forwardEvent = function(evt){
-		//Crude but necessary
-		origRemoveAll.apply(obj, [evt]);
-		origOn.apply(obj, [evt, function(){
-			executeProcessor(evt, arguments, 0);
-		}]);
+		if(registeredEvents.indexOf(evt) < 0){
+			origOn.apply(obj, [evt, function(){
+				executeProcessor(evt, arguments, 0);
+			}]);
+			registeredEvents.push(evt);
+		}
 		return ret;
 	};
 
 	var oldOn = ret.on;
 	ret.on = ret.addEventListener = function(){
 		forwardEvent(arguments[0]);
-		oldOn.apply(ret, arguments);
+		return oldOn.apply(ret, arguments);
 	};
 
 	ret.addEventProcessor = function(evt, processor){
@@ -88,7 +90,7 @@ self.EventHook = function(obj){
 					arguments[i] = arguments[i].bind(obj);
 				}
 			}
-			ret[funcName].apply(ret, arguments);
+			return ret[funcName].apply(ret, arguments);
 		}
 	});
 	obj.__eventHookShim = ret;
