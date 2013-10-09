@@ -1,7 +1,7 @@
 {
   "name": "event-hook",
   "version": "1.0.1",
-  "description": "",
+  "description": "Allows installation of intermediate procesing functions between an event being emitted on an object and it's listeners receiving the events.",
   "main": "index.js",
   "scripts": {
     "test": "nodeunit tests/tests.js"
