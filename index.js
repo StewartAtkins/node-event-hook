@@ -80,9 +80,14 @@ self.EventShim = function(obj){
 
 //TODO: apply this to all eventEmitter methods in target object
 self.EventHook = function(obj){
-	var ret = self.EventShim(obj);
+	var ret;
+	if(self.IsHooked(obj))
+		ret = self.GetShim(obj);
+	else
+		ret = self.EventShim(obj);
 	Object.keys(EventEmitter.prototype).forEach(function(funcName){
-		if(funcName.toLowerCase() == "emit") //Don't hook emit otherwise what the hell are we doing here...
+		//Don't hook emit otherwise what the hell are we doing here...
+		if(funcName.toLowerCase() == "emit" || typeof(obj[funcName]) != "function" || obj[funcName].__evtHookMarker) 
 			return;
 		obj[funcName] = function(){
 			for(var i=0;i<arguments.length;i++){
@@ -91,7 +96,8 @@ self.EventHook = function(obj){
 				}
 			}
 			return ret[funcName].apply(ret, arguments);
-		}
+		};
+		obj[funcName].__evtHookMarker = true;
 	});
 	obj.__eventHookShim = ret;
 	return ret;

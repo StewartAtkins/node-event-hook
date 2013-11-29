@@ -207,3 +207,40 @@ exports.testShimRetrievabl = function(test){
 	test.equal(evtTools.GetShim(testObj), shim, "Hook retrieval returned incorrect value");
 	test.done();
 };
+
+exports.testHookAsync = function(test){
+	test.expect(2);
+
+	var testObj = new events.EventEmitter();
+	var shim = evtTools.EventHook(testObj);
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		cb(magicNo + 10);
+	});
+	testObj.on("testEvent2", function(magicNo){
+		test.equal(magicNo, 52, "Incorrect argument was propagated");
+		test.equal(this, testObj, "Incorrect 'this' context in hook mode")
+	});
+	process.nextTick(function(){
+		testObj.emit("testEvent2",42);
+		test.done();
+	});
+};
+
+exports.testHookReapply = function(test){
+	test.expect(2);
+
+	var testObj = new events.EventEmitter();
+	var origOn = testObj.on;
+	var shim = evtTools.EventHook(testObj);
+	testObj.on = origOn;
+	evtTools.EventHook(testObj);
+	shim.addEventProcessor("testEvent2", function(cb, magicNo){
+		cb(magicNo + 10);
+	});
+	testObj.on("testEvent2", function(magicNo){
+		test.equal(magicNo, 52, "Incorrect argument was propagated");
+		test.equal(this, testObj, "Incorrect 'this' context in hook mode")
+	});
+	testObj.emit("testEvent2",42);
+	test.done();
+};
