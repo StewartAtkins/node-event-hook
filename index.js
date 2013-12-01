@@ -15,7 +15,20 @@ module.exports = exports = self;
 */
 
 self.EventShim = function(obj){
-	var ret = new EventEmitter();
+	if(obj.__isEventShim){
+		return obj;
+	}
+
+	var ret;
+	if(obj.__eventHookShim){
+		ret = obj.__eventHookShim;
+		return ret;
+	}else{
+		ret = new EventEmitter();
+		Object.defineProperty(obj, "__eventHookShim", {"value": ret});
+		Object.defineProperty(ret, "__isEventShim", {"value": true});
+	}
+
 
 	var eventProcessors = {};
 	var registeredEvents = [];
@@ -99,7 +112,6 @@ self.EventHook = function(obj){
 		};
 		obj[funcName].__evtHookMarker = true;
 	});
-	obj.__eventHookShim = ret;
 	return ret;
 };
 
@@ -114,6 +126,6 @@ self.IsHooked = function(obj){
 * Returns the shim object, null otherwise
 */
 self.GetShim = function(obj){
-	if("__eventHookShim" in obj)
+	if(obj.__eventHookShim)
 		return obj.__eventHookShim;
 };

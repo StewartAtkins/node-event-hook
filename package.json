@@ -1,6 +1,6 @@
 {
   "name": "event-hook",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Allows installation of intermediate procesing functions between an event being emitted on an object and it's listeners receiving the events.",
   "main": "index.js",
   "scripts": {

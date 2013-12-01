@@ -16,6 +16,42 @@ exports.testShimForwarding = function(test){
 	test.done();
 };
 
+exports.testShimReapplication = function(test){
+	test.expect(1);
+	var testObj = new events.EventEmitter();
+	var shim1 = evtTools.EventShim(testObj);
+	shim1.addEventProcessor("testEvent1", function(cb, magicNo){
+		cb(magicNo + 1);
+	});
+	var shim2 = evtTools.EventShim(testObj);
+	shim2.addEventProcessor("testEvent1", function(cb, magicNo){
+		cb(magicNo + 2);
+	});
+	shim2.on("testEvent1", function(magicNo){
+		test.equal(magicNo, 45, "Both shim events were not processed");
+	});
+	testObj.emit("testEvent1", 42);
+	test.done();
+};
+
+exports.testShimHookShim = function(test){
+	test.expect(1);
+	var testObj = new events.EventEmitter();
+	var shim1 = evtTools.EventShim(testObj);
+	shim1.addEventProcessor("testEvent1", function(cb, magicNo){
+		cb(magicNo + 1);
+	});
+	var shim2 = evtTools.EventShim(shim1);
+	shim2.addEventProcessor("testEvent1", function(cb, magicNo){
+		cb(magicNo + 2);
+	});
+	shim2.on("testEvent1", function(magicNo){
+		test.equal(magicNo, 45, "Both shim events were not processed");
+	});
+	testObj.emit("testEvent1", 42);
+	test.done();
+};
+
 //As the previous test, but verifies behaviour when forwardEvent is called instead of passing the event name in the pseudo-constructor
 //Removed since forwarding doesn't need to be exposed anymore, and therefore isn't
 /*
